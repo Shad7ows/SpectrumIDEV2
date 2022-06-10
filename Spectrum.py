@@ -2,9 +2,9 @@
 # استيراد المكاتب
 ######################################################################
 
-from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QToolBar, QVBoxLayout, QTabWidget, \
-    QDockWidget, QFileDialog, QMessageBox, QStatusBar, QLabel, QTreeView
-from PyQt6.QtGui import QIcon, QFont, QAction, QFontDatabase, QFileSystemModel
+from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QToolBar, QVBoxLayout, QHBoxLayout, QTabWidget, \
+    QDockWidget, QFileDialog, QMessageBox, QStatusBar, QLabel, QTreeView, QDialog, QFrame, QPushButton
+from PyQt6.QtGui import QIcon, QFont, QAction, QFontDatabase, QFileSystemModel, QPixmap
 from PyQt6.QtCore import Qt, QProcess, QTimer, QObject, pyqtSignal, pyqtSlot, QThread, QDir
 from tempfile import gettempdir
 import CodeEditor
@@ -31,7 +31,7 @@ class MainWin(QMainWindow):
         self.resize(1280, 720)
         self.setWindowTitle("طيف")
         self.setWindowIcon(QIcon('./icons/TaifLogo.svg'))
-        self.version = '0.4.3'
+        self.version = '0.4.5'
         self.set_fonts_database()
 
         self.centerWidget = QWidget(self)
@@ -112,20 +112,25 @@ class MainWin(QMainWindow):
         fileMenu.addAction(self.newAction)
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.saveAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.settingAction)
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.exitApp)
 
         examplesMenu = menuBar.addMenu('أمثلة')
-        examplesMenu.addAction(self.PrintExampleAction)
-        examplesMenu.addAction(self.ImportExampleAction)
-        examplesMenu.addAction(self.VarExampleAction)
-        examplesMenu.addAction(self.MathExampleAction)
-        examplesMenu.addAction(self.FuncExampleAction)
-        examplesMenu.addAction(self.IfExampleAction)
-        examplesMenu.addAction(self.WhileExampleAction)
-        examplesMenu.addAction(self.InputExampleAction)
-        examplesMenu.addAction(self.ClassExampleAction)
-        examplesMenu.addAction(self.CppExampleAction)
+        examplesMenu.addAction(self.printExampleAction)
+        examplesMenu.addAction(self.importExampleAction)
+        examplesMenu.addAction(self.varExampleAction)
+        examplesMenu.addAction(self.mathExampleAction)
+        examplesMenu.addAction(self.funcExampleAction)
+        examplesMenu.addAction(self.ifExampleAction)
+        examplesMenu.addAction(self.whileExampleAction)
+        examplesMenu.addAction(self.inputExampleAction)
+        examplesMenu.addAction(self.classExampleAction)
+        examplesMenu.addAction(self.cppExampleAction)
 
         helpMenu = menuBar.addMenu('مساعدة')
+        helpMenu.addAction(self.helpDialogAction)
 
     def _tool_bar(self):
         runToolBar = QToolBar('تشغيل')
@@ -144,65 +149,134 @@ class MainWin(QMainWindow):
         self.openAction.setShortcut("Ctrl+O")
         self.openAction.setStatusTip('فتح ملف... ')
         self.openAction.triggered.connect(self.open_file)
+
         self.saveAction = QAction(QIcon('./icons/save_black.svg'), '&حفظ', self)
         self.saveAction.setShortcut("Ctrl+S")
         self.saveAction.setStatusTip('حفظ شفرة التبويب الحالي... ')
         self.saveAction.triggered.connect(self.save_file)
 
+        self.settingAction = QAction('&إعدادات', self)
+        self.settingAction.setShortcut('Ctrl+E')
+        self.settingAction.setStatusTip('الإعدادات...')
+        self.settingAction.triggered.connect(self.setting_Dialog)
+
+        self.exitApp = QAction("خروج", self)
+        self.exitApp.setStatusTip("الخروج من البرنامج... ")
+        self.exitApp.triggered.connect(self.exit_app)
+
         self.compileAction = QAction(QIcon('./icons/compile_black.svg'), 'ترجمة', self)
         self.compileAction.setShortcut('Ctrl+f2')
         self.compileAction.setStatusTip('بناء شفرة التبويب الحالي... ')
         self.compileAction.triggered.connect(self.compile_thread_task)
+
         self.runAction = QAction(QIcon('./icons/run_arrow.svg'), 'تشغيل', self)
         self.runAction.setShortcut('Ctrl+f10')
         self.runAction.setStatusTip('تنفيذ الشفرة التي تم بناؤها... ')
         self.runAction.triggered.connect(self.run_thread_task)
 
-        self.PrintExampleAction = QAction('دالة طباعة', self)
-        self.PrintExampleAction.setStatusTip('فتح مثال "دالة طباعة.alif"')
-        self.PrintExampleAction.triggered.connect(self.print_example)
+        self.printExampleAction = QAction('دالة طباعة', self)
+        self.printExampleAction.setStatusTip('فتح مثال "دالة طباعة.alif"')
+        self.printExampleAction.triggered.connect(self.print_example)
 
-        self.ImportExampleAction = QAction('استيراد مكتبة', self)
-        self.ImportExampleAction.setStatusTip('فتح مثال "استيراد مكتبة.alif"')
-        self.ImportExampleAction.triggered.connect(self.import_example)
+        self.importExampleAction = QAction('استيراد مكتبة', self)
+        self.importExampleAction.setStatusTip('فتح مثال "استيراد مكتبة.alif"')
+        self.importExampleAction.triggered.connect(self.import_example)
 
-        self.VarExampleAction = QAction('تعريف متغير', self)
-        self.VarExampleAction.setStatusTip('فتح مثال "تعريف متغير.alif"')
-        self.VarExampleAction.triggered.connect(self.var_example)
+        self.varExampleAction = QAction('تعريف متغير', self)
+        self.varExampleAction.setStatusTip('فتح مثال "تعريف متغير.alif"')
+        self.varExampleAction.triggered.connect(self.var_example)
 
-        self.MathExampleAction = QAction('العمليات الحسابية', self)
-        self.MathExampleAction.setStatusTip('فتح مثال "العمليات الحسابية.alif"')
-        self.MathExampleAction.triggered.connect(self.math_example)
+        self.mathExampleAction = QAction('العمليات الحسابية', self)
+        self.mathExampleAction.setStatusTip('فتح مثال "العمليات الحسابية.alif"')
+        self.mathExampleAction.triggered.connect(self.math_example)
 
-        self.FuncExampleAction = QAction('تعريف دالة', self)
-        self.FuncExampleAction.setStatusTip('فتح مثال "تعريف دالة.alif"')
-        self.FuncExampleAction.triggered.connect(self.func_example)
+        self.funcExampleAction = QAction('تعريف دالة', self)
+        self.funcExampleAction.setStatusTip('فتح مثال "تعريف دالة.alif"')
+        self.funcExampleAction.triggered.connect(self.func_example)
 
-        self.IfExampleAction = QAction('إذا الشرطية', self)
-        self.IfExampleAction.setStatusTip('فتح مثال "إذا الشرطية.alif"')
-        self.IfExampleAction.triggered.connect(self.if_example)
+        self.ifExampleAction = QAction('إذا الشرطية', self)
+        self.ifExampleAction.setStatusTip('فتح مثال "إذا الشرطية.alif"')
+        self.ifExampleAction.triggered.connect(self.if_example)
 
-        self.WhileExampleAction = QAction('حلقة كلما', self)
-        self.WhileExampleAction.setStatusTip('فتح مثال "حلقة كلما.alif"')
-        self.WhileExampleAction.triggered.connect(self.while_example)
+        self.whileExampleAction = QAction('حلقة كلما', self)
+        self.whileExampleAction.setStatusTip('فتح مثال "حلقة كلما.alif"')
+        self.whileExampleAction.triggered.connect(self.while_example)
 
-        self.InputExampleAction = QAction('طلب بيانات من المستخدم', self)
-        self.InputExampleAction.setStatusTip('فتح مثال "طلب بيانات من المستخدم.alif"')
-        self.InputExampleAction.triggered.connect(self.input_example)
+        self.inputExampleAction = QAction('طلب بيانات من المستخدم', self)
+        self.inputExampleAction.setStatusTip('فتح مثال "طلب بيانات من المستخدم.alif"')
+        self.inputExampleAction.triggered.connect(self.input_example)
 
-        self.ClassExampleAction = QAction('تعريف صنف', self)
-        self.ClassExampleAction.setStatusTip('فتح مثال "تعريف صنف.alif"')
-        self.ClassExampleAction.triggered.connect(self.class_example)
+        self.classExampleAction = QAction('تعريف صنف', self)
+        self.classExampleAction.setStatusTip('فتح مثال "تعريف صنف.alif"')
+        self.classExampleAction.triggered.connect(self.class_example)
 
-        self.CppExampleAction = QAction('C++ حقن لغة', self)
-        self.CppExampleAction.setStatusTip('فتح مثال "C++ حقن لغة.alif"')
-        self.CppExampleAction.triggered.connect(self.cpp_injection_example)
+        self.cppExampleAction = QAction('C++ حقن لغة', self)
+        self.cppExampleAction.setStatusTip('فتح مثال "C++ حقن لغة.alif"')
+        self.cppExampleAction.triggered.connect(self.cpp_injection_example)
 
+        self.helpDialogAction = QAction("حول", self)
+        self.helpDialogAction.setStatusTip("عن برنامج طيف... ")
+        self.helpDialogAction.triggered.connect(self.info_dialog)
 
     def _status_bar(self):
         self.stateBar = QStatusBar()
         self.setStatusBar(self.stateBar)
         self.stateBar.addPermanentWidget(self.charCount.charCountLable)
+
+    def setting_Dialog(self):
+        settingDialog = QDialog()
+        settingDialog.setContentsMargins(0, 0, 0, 0)
+        settingDialog.setWindowTitle('إعدادات')
+        settingDialog.setWindowIcon(QIcon('./icons/TaifLogo.svg'))
+
+        settingLayout = QHBoxLayout()
+        settingLayout.setContentsMargins(0, 0, 0, 0)
+        settingDialog.setLayout(settingLayout)
+
+        menuFrame = QFrame()
+        menuLayout = QVBoxLayout()
+        menuLayout.setContentsMargins(0, 0, 0, 0)
+        menuFrame.setLayout(menuLayout)
+
+        editorButton = QPushButton('المحرر')
+        editorButton.setFixedWidth(192)
+        editorButton.setFlat(True)
+
+        proparityFrame = QFrame()
+        proparityFrame.setMinimumWidth(512)
+        proparityLayout = QVBoxLayout()
+        proparityFrame.setLayout(proparityLayout)
+
+        settingLayout.addWidget(menuFrame)
+        settingLayout.addWidget(proparityFrame)
+        menuLayout.addWidget(editorButton)
+
+
+        settingDialog.exec()
+
+    def info_dialog(self):
+        dialog = QDialog()
+        dialog.setWindowTitle("عن طيف")
+        dialog.setWindowIcon(QIcon('./icons/TaifLogo.svg'))
+
+        with open('About.sha', 'r', encoding="utf-8") as About:
+            about = About.read()
+            About.close()
+
+        infoLayout = QHBoxLayout()
+        infoLabel = QLabel(about)
+        infoLabel.setContentsMargins(8, 8, 16, 8)
+
+        imageLable = QLabel()
+        imageLable.setContentsMargins(8, 8, 8, 8)
+        taifLogo = QPixmap("icons/TaifLogo.png")
+        imageLable.setPixmap(taifLogo)
+
+        dialog.setLayout(infoLayout)
+        infoLayout.addWidget(imageLable)
+        infoLayout.addWidget(infoLabel)
+
+        dialog.exec()
 
     def close_tab(self, idx):
         if self.is_saved(idx):
@@ -446,6 +520,9 @@ class MainWin(QMainWindow):
         versionLable.setFont(QFont('Alusus Mono Medium'))
         self.stateBar.addPermanentWidget(versionLable)
 
+    def exit_app(self):
+        sys.exit(app)
+
 
 ######################################################################
 # مسلك الترجمة
@@ -523,6 +600,7 @@ class RunThread(QObject):
             dataWrite = mainWin.inputLine.text() + '\n'
             dataWriteByte = dataWrite.encode()
             self.process.write(dataWriteByte)
+
 
 ######################################################################
 # عداد الحروف
